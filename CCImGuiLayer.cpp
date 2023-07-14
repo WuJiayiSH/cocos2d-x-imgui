@@ -31,7 +31,7 @@ bool ImGuiLayer::init()
     auto listener = EventListenerTouchOneByOne::create();
     listener->setSwallowTouches(true);
     listener->onTouchBegan = [](Touch* touch, Event*) -> bool {
-        return ImGui::IsAnyWindowHovered();
+        return ImGui::IsAnyItemHovered();
     };
     getEventDispatcher()->addEventListenerWithSceneGraphPriority(listener, this);
     return true;
