@@ -1,11 +1,16 @@
 #include "imgui_impl_cocos2dx.h"
 #include "cocos2d.h"
 
-#ifdef __EMSCRIPTEN__
+#if defined(__EMSCRIPTEN__) || defined(__ANDROID__)
 #define IMGUI_IMPL_OPENGL_ES3 1
 #else
 #define IMGUI_IMPL_OPENGL_ES2 1
 #endif
+
+#ifndef GL_VERTEX_ARRAY_BINDING
+#define GL_VERTEX_ARRAY_BINDING 0x85B5
+#endif
+
 //#define LOG cocos2d::log
 
 #ifdef CC_PLATFORM_PC
@@ -42,6 +47,7 @@ enum ClientApi
 static ClientApi            g_ClientApi = ClientApi_Unknown;
 static double               g_Time = 0.0;
 static bool                 g_MouseJustPressed[5] = { false, false, false, false, false };
+static bool                 g_TouchIsHeld = false;
 static ImVec2               g_CursorPos = ImVec2(-FLT_MAX, -FLT_MAX);
 
 #ifdef CC_PLATFORM_PC
@@ -692,6 +698,35 @@ bool ImGui_ImplCocos2dx_Init(bool install_callbacks)
         g_PrevUserCallbackChar = glfwSetCharCallback(window, ImGui_ImplCocos2dx_CharCallback);
     }
 #else
+    cocos2d::EventListenerTouchOneByOne* touchListener = cocos2d::EventListenerTouchOneByOne::create();
+    touchListener->setSwallowTouches(false);
+    touchListener->onTouchBegan = [](cocos2d::Touch* touch, cocos2d::Event*)
+	{
+        IM_ASSERT(touch);
+        const cocos2d::Size& winSize = cocos2d::Director::getInstance()->getWinSize();
+		g_CursorPos.x = touch->getLocation().x;
+		g_CursorPos.y = winSize.height - touch->getLocation().y;
+		g_MouseJustPressed[0] = true;
+        g_TouchIsHeld = true;
+        return true;
+	};
+    touchListener->onTouchMoved = [](cocos2d::Touch* touch, cocos2d::Event*)
+	{
+        IM_ASSERT(touch);
+        const cocos2d::Size& winSize = cocos2d::Director::getInstance()->getWinSize();
+		g_CursorPos.x = touch->getLocation().x;
+		g_CursorPos.y = winSize.height - touch->getLocation().y;
+	};
+    touchListener->onTouchEnded = [](cocos2d::Touch*, cocos2d::Event*)
+	{
+		g_TouchIsHeld = false;
+	};
+    touchListener->onTouchCancelled = [](cocos2d::Touch*, cocos2d::Event*)
+	{
+		g_TouchIsHeld = false;
+	};
+    cocos2d::Director::getInstance()->getEventDispatcher()->addEventListenerWithFixedPriority(touchListener, -INT_MAX);
+    
 	auto e = cocos2d::EventListenerMouse::create();
 	e->onMouseDown = [](cocos2d::EventMouse* ev)
 	{
@@ -716,10 +751,10 @@ bool ImGui_ImplCocos2dx_Init(bool install_callbacks)
 		_io.MouseWheelH += (float)ev->getScrollX();
 		_io.MouseWheel += (float)ev->getScrollY();
 	};
-	cocos2d::Director::getInstance()->getEventDispatcher()->addEventListenerWithFixedPriority(e, 1);
+	cocos2d::Director::getInstance()->getEventDispatcher()->addEventListenerWithFixedPriority(e, -INT_MAX);
 	auto e2 = cocos2d::EventListenerKeyboard::create();
 	using KeyCode = cocos2d::EventKeyboard::KeyCode;
-	e2->onKeyPressed = [](auto k, auto ev)
+	e2->onKeyPressed = [](KeyCode k, cocos2d::Event* ev)
 	{
 		auto& _io = ImGui::GetIO();
 		_io.KeysDown[(int)k] = true;
@@ -729,7 +764,7 @@ bool ImGui_ImplCocos2dx_Init(bool install_callbacks)
 		_io.KeyAlt = _io.KeysDown[(int)KeyCode::KEY_LEFT_ALT] || _io.KeysDown[(int)KeyCode::KEY_RIGHT_ALT];
 		_io.KeySuper = _io.KeysDown[(int)KeyCode::KEY_HYPER];
 	};
-	e2->onKeyReleased = [](auto k, auto ev)
+	e2->onKeyReleased = [](KeyCode k, cocos2d::Event* ev)
 	{
 		auto& _io = ImGui::GetIO();
 		_io.KeysDown[(int)k] = false;
@@ -739,7 +774,7 @@ bool ImGui_ImplCocos2dx_Init(bool install_callbacks)
 		_io.KeyAlt = _io.KeysDown[(int)KeyCode::KEY_LEFT_ALT] || _io.KeysDown[(int)KeyCode::KEY_RIGHT_ALT];
 		_io.KeySuper = _io.KeysDown[(int)KeyCode::KEY_HYPER];
 	};
-	cocos2d::Director::getInstance()->getEventDispatcher()->addEventListenerWithFixedPriority(e2, 1);
+	cocos2d::Director::getInstance()->getEventDispatcher()->addEventListenerWithFixedPriority(e2, -INT_MAX);
 #endif // CC_PLATFORM_PC
 	g_ClientApi = ClientApi_OpenGL;
     return true;
@@ -797,7 +832,7 @@ static void ImGui_ImplCocos2dx_UpdateMousePosAndButtons()
 	for (int i = 0; i < IM_ARRAYSIZE(io.MouseDown); i++)
 	{
 		// If a mouse press event came, always pass it as "mouse held this frame", so we don't miss click-release events that are shorter than 1 frame.
-		io.MouseDown[i] = g_MouseJustPressed[i];
+		io.MouseDown[i] = g_MouseJustPressed[i] || g_TouchIsHeld;
 		g_MouseJustPressed[i] = false;
 	}
 	// Update mouse position
