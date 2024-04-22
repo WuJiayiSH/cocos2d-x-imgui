@@ -40,7 +40,9 @@ set(SOURCE
     imgui/misc/cpp/imgui_stdlib.cpp
 )
 
-if(BUILD_LUA_LIBS)
+# TODO: lua-bindings does not compile with docking branch
+# if(BUILD_LUA_LIBS)
+if(FALSE)
     include_directories(lua-bindings)
     list(APPEND HEADER
         lua-bindings/imgui_lua.hpp
