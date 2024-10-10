@@ -128,8 +128,16 @@ bool CCIMGUI::imageButton(cocos2d::Texture2D* tex, const ImVec2& size, const ImV
 	else
 		id = ++it->second;
 	ImGui::PushID(id);
-	const auto ret = ImGui::ImageButton((ImTextureID)tex->getName(),
-		size_, uv0, uv1, frame_padding, bg_col, tint_col);
+
+	if (frame_padding >= 0)
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2((float)frame_padding, (float)frame_padding));
+
+	const auto ret = ImGui::ImageButton("", (ImTextureID)tex->getName(),
+		size_, uv0, uv1, bg_col, tint_col);
+
+	if (frame_padding >= 0)
+		ImGui::PopStyleVar();
+
 	ImGui::PopID();
 	return ret;
 }
@@ -155,8 +163,16 @@ bool CCIMGUI::imageButton(cocos2d::Sprite* sprite, const ImVec2& size, int frame
 	else
 		id = ++it->second;
 	ImGui::PushID(id);
-	const auto ret = ImGui::ImageButton((ImTextureID)sprite->getTexture()->getName(),
-		size_, uv0, uv1, frame_padding, bg_col, tint_col);
+
+	if (frame_padding >= 0)
+		ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2((float)frame_padding, (float)frame_padding));
+
+	const auto ret = ImGui::ImageButton("", (ImTextureID)sprite->getTexture()->getName(),
+		size_, uv0, uv1, bg_col, tint_col);
+
+	if (frame_padding >= 0)
+		ImGui::PopStyleVar();
+
 	ImGui::PopID();
 	return ret;
 }
